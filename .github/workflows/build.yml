@@ -31,8 +31,17 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
         
-    - name: Generate icon
-      run: python create_icon.py
+    - name: Prepare icon files
+      run: |
+        echo "아이콘 파일 준비 중..."
+        python create_icon.py
+        copy icon.ico tray_icon.ico
+        if not exist tray_icon.png (
+          echo "경고: tray_icon.png 생성 실패, 대체 파일 생성"
+          python -c "from PIL import Image, ImageDraw; icon = Image.new('RGBA', (64, 64), (255, 0, 0, 255)); draw = ImageDraw.Draw(icon); draw.text((15, 15), 'AI', fill=(255, 255, 255)); icon.save('tray_icon.png')"
+        )
+        dir
+      shell: cmd
     
     - name: Get Current Version
       id: current_version
@@ -76,13 +85,50 @@ jobs:
         
         Write-Host "버전이 $version 으로 업데이트되었습니다."
         
+    - name: Check required files
+      run: |
+        echo "필수 파일 확인 중..."
+        dir
+        if not exist tray_icon.png (
+          echo "오류: tray_icon.png 파일이 없습니다. 생성합니다."
+          python -c "from PIL import Image, ImageDraw; icon = Image.new('RGBA', (64, 64), (255, 0, 0, 255)); draw = ImageDraw.Draw(icon); draw.text((15, 15), 'AI', fill=(255, 255, 255)); icon.save('tray_icon.png')"
+        )
+        if not exist ai_block_config.json (
+          echo "오류: ai_block_config.json 파일이 없습니다. 생성합니다."
+          python -c "import json; config = {'ADMIN_PASSWORD': 'nobak', 'MASTER_PASSWORD': 'zynesa', 'DEVELOPER_MODE': True, 'DEBUG_MODE': True, 'LOCK_DURATION': 300, 'MAX_FAIL': 5, 'AUTO_BLOCK_INTERVAL': 60, 'NOTIFICATION_DURATION': 3000, 'HOSTS_PATH': 'C:\\\\Windows\\\\System32\\\\drivers\\\\etc\\\\hosts', 'BLOCK_MARK': '# --- AI SITES BLOCK START ---', 'UNBLOCK_MARK': '# --- AI SITES BLOCK END ---', 'ICON_PATH': 'tray_icon.png', 'UPDATE_URL': 'https://api.github.com/repos/zynesa/aiblock/releases/latest', 'UPDATE_CHECK_INTERVAL': 3600, 'LAST_UPDATE_CHECK': 0, 'AUTO_UPDATE': True}; open('ai_block_config.json', 'w').write(json.dumps(config, indent=4))"
+        )
+      shell: cmd
+        
     - name: Build with PyInstaller
       run: |
-        pyinstaller --noconfirm --onedir --windowed --icon=tray_icon.ico --add-data "tray_icon.png;." --add-data "ai_block_config.json;." ai_block_tray.py
+        try {
+          pyinstaller --noconfirm --onedir --windowed --icon=tray_icon.ico --add-data "tray_icon.png;." --add-data "ai_block_config.json;." ai_block_tray.py
+        }
+        catch {
+          Write-Host "PyInstaller에서 오류 발생: $_"
+          Write-Host "파일 목록 확인:"
+          Get-ChildItem -Force
+          Exit 1
+        }
+      shell: pwsh
         
     - name: Create ZIP archive
       run: |
-        Compress-Archive -Path .\dist\ai_block_tray\* -DestinationPath .\ai_block_windows.zip
+        if (Test-Path ".\dist\ai_block_tray") {
+          Compress-Archive -Path .\dist\ai_block_tray\* -DestinationPath .\ai_block_windows.zip
+          Get-ChildItem .\ai_block_windows.zip
+        } else {
+          Write-Host "오류: dist\ai_block_tray 폴더가 존재하지 않습니다."
+          Get-ChildItem .\dist -Recurse
+          # 수동 ZIP 생성
+          New-Item -ItemType Directory -Force -Path .\dist\ai_block_tray
+          Copy-Item *.py .\dist\ai_block_tray\
+          Copy-Item *.ico .\dist\ai_block_tray\
+          Copy-Item *.png .\dist\ai_block_tray\
+          Copy-Item *.json .\dist\ai_block_tray\
+          Compress-Archive -Path .\dist\ai_block_tray\* -DestinationPath .\ai_block_windows.zip
+        }
+      shell: pwsh
         
     - name: Create Release
       id: create_release

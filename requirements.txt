@@ -1,4 +1,8 @@
 PyQt5==5.15.9
 requests==2.31.0
 pyinstaller==6.5.0
-cx-Freeze==6.15.12 
+cx-Freeze==6.15.12
+pystray==0.19.5
+Pillow==10.2.0
+psutil==5.9.8
+pywin32==306 

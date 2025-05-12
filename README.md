@@ -1,48 +1,30 @@
 # AI Block
 
-AI 사이트 차단 프로그램
+AI 서비스 접속을 차단하는 Windows용 프로그램입니다.
 
 ## 기능
 
-- AI 사이트 자동 차단
-- 시스템 트레이 상주
-- 관리자 비밀번호 보호
-- 자동 업데이트
-- 개발자 모드
-- MSI 설치 프로그램
-- 완전 제거 지원
+- 주요 AI 서비스 도메인 차단 (ChatGPT, Claude, Bard 등)
+- 시스템 트레이에서 실행
+- 10초마다 자동으로 차단 상태 유지
+- 관리자 권한으로 자동 실행
+
+## 사용 방법
+
+1. `main.py`를 실행하여 AI 차단 시작
+2. `unblock_ai.py`를 실행하여 차단 해제
+
+## 요구사항
+
+- Windows 10 이상
+- Python 3.8 이상
+- requirements.txt의 패키지들
 
 ## 설치
 
-1. [최신 릴리즈](https://github.com/YOUR_USERNAME/aiblock/releases/latest)에서 `AI_Block_Setup.msi` 다운로드
-2. MSI 설치 프로그램 실행 (관리자 권한 필요)
-
-## 제거
-
-1. Windows 설정 > 앱 > 앱 및 기능에서 "AI Block" 제거
-2. 또는 설치 폴더의 `uninstall.bat` 실행 (관리자 권한 필요)
-
-## 개발
-
 ```bash
-# 의존성 설치
 pip install -r requirements.txt
-
-# 실행
-python ai_block_tray.py
-
-# 빌드
-pyinstaller --noconfirm --onefile --windowed --icon=tray_icon.png --add-data "tray_icon.png;." ai_block_tray.py
-
-# MSI 빌드 (WiX Toolset 필요)
-candle.exe installer/config.wxs -ext WixUIExtension -arch x64
-light.exe config.wixobj -ext WixUIExtension -out AI_Block_Setup.msi
 ```
-
-## 기본 설정
-
-- 관리자 비밀번호: nobak
-- 마스터 비밀번호: zynesa
 
 ## 라이선스
 

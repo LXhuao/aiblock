@@ -1,0 +1,19 @@
+# Set default behavior to automatically normalize line endings
+* text=auto
+
+# Explicitly declare text files to be normalized
+*.py text
+*.bat text
+*.md text
+*.txt text
+*.json text
+*.yml text
+*.yaml text
+*.iss text
+
+# Declare binary files
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary 

@@ -4,11 +4,7 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   build:
@@ -20,7 +16,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11'
+        python-version: '3.9'
         
     - name: Install dependencies
       run: |
@@ -28,36 +24,38 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
         
+    - name: Generate icon
+      run: python create_icon.py
+        
     - name: Build with PyInstaller
       run: |
-        pyinstaller --noconfirm --onefile --windowed --icon=tray_icon.png --add-data "tray_icon.png;." ai_block_tray.py
+        pyinstaller --noconfirm --onedir --windowed --icon=tray_icon.ico --add-data "tray_icon.png;." --add-data "ai_block_config.json;." ai_block_tray.py
         
-    - name: Install WiX Toolset
+    - name: Create ZIP archive
       run: |
-        $wixUrl = "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip"
-        Invoke-WebRequest -Uri $wixUrl -OutFile wix.zip
-        Expand-Archive wix.zip -DestinationPath wix
-        echo "$pwd\wix" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        Compress-Archive -Path .\dist\ai_block_tray\* -DestinationPath .\ai_block_windows.zip
         
-    - name: Prepare MSI Build
+    - name: Get Version
+      id: get_version
       run: |
-        mkdir -p installer/build
-        copy dist\* installer\build\
-        copy installer\uninstall.bat installer\build\
-        copy installer\license.rtf installer\build\
-        
-    - name: Build MSI
-      run: |
-        cd installer
-        candle.exe config.wxs -ext WixUIExtension -arch x64 -dBindPath.dist=build -dBindPath.installer=. -out build/config.wixobj
-        light.exe build/config.wixobj -ext WixUIExtension -out build/AI_Block_Setup.msi
-        cd ..
-        
+        $version = ""
+        if ("${{ github.ref }}" -match "refs/tags/v(.*)") {
+          $version = $Matches[1]
+        } else {
+          $version = "dev-${{ github.sha }}"
+        }
+        echo "::set-output name=version::$version"
+      shell: pwsh
+      
     - name: Create Release
-      if: startsWith(github.ref, 'refs/tags/')
+      id: create_release
       uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
       with:
+        name: AI Block v${{ steps.get_version.outputs.version }}
+        draft: false
+        prerelease: false
         files: |
-          installer/build/AI_Block_Setup.msi
+          ai_block_windows.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

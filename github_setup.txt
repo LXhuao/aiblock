@@ -1,0 +1,32 @@
+# GitHub 저장소 설정 가이드
+
+1. GitHub에서 새 저장소 생성하기
+   - GitHub에 로그인하세요
+   - 오른쪽 상단의 '+' 버튼을 클릭하고 'New repository'를 선택하세요
+   - 저장소 이름으로 'aiblock'을 입력하세요
+   - 설명(Description)으로 'AI 서비스 접속을 차단하는 Windows용 프로그램'을 입력하세요
+   - 저장소를 public으로 설정하세요
+   - 'Create repository' 버튼을 클릭하세요
+
+2. 로컬 저장소와 GitHub 저장소 연결하기
+   다음 명령어를 순서대로 실행하세요:
+
+   ```bash
+   git remote add origin https://github.com/zynesa/aiblock.git
+   git push -u origin master
+   ```
+
+3. 첫 번째 릴리스 생성하기
+   ```bash
+   git tag -a v1.0.0 -m "첫 번째 릴리스"
+   git push origin v1.0.0
+   ```
+
+4. 저장소가 성공적으로 설정되면 GitHub Actions가 자동으로 빌드하고 릴리스 파일을 생성합니다.
+
+5. 빌드 스크립트 실행으로 로컬에서 인스톨러 생성하기
+   ```bash
+   build.bat
+   ```
+
+참고: GitHub 저장소 URL은 귀하의 GitHub 계정명에 따라 변경해야 합니다. 

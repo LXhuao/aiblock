@@ -345,18 +345,29 @@ class Updater(QtCore.QObject):
     update_available = QtCore.pyqtSignal(str, str)  # version, download_url
     update_progress = QtCore.pyqtSignal(int)  # progress percentage
     update_completed = QtCore.pyqtSignal(bool, str)  # success, message
+    update_status = QtCore.pyqtSignal(str)  # 상태 메시지
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.config = Config()
         self.current_version = VERSION
+        self.is_checking = False
+        self.is_downloading = False
+        self.auto_check_running = False
 
-    def check_for_updates(self):
+    def check_for_updates(self, force=False):
+        if self.is_checking:
+            return
+            
+        self.is_checking = True
+        
         try:
             now = time.time()
-            if now - self.config.LAST_UPDATE_CHECK < self.config.UPDATE_CHECK_INTERVAL:
+            if not force and now - self.config.LAST_UPDATE_CHECK < self.config.UPDATE_CHECK_INTERVAL:
+                self.is_checking = False
                 return
 
+            self.update_status.emit("업데이트 확인 중...")
             response = requests.get(self.config.UPDATE_URL)
             response.raise_for_status()
             release_info = response.json()
@@ -364,21 +375,40 @@ class Updater(QtCore.QObject):
             latest_version = release_info['tag_name'].lstrip('v')
             if self._compare_versions(latest_version, self.current_version) > 0:
                 download_url = release_info['assets'][0]['browser_download_url']
+                self.update_status.emit(f"새 버전 {latest_version} 발견")
                 self.update_available.emit(latest_version, download_url)
                 logging.info(f"새로운 버전 발견: {latest_version}")
+                
+                # 자동 업데이트 설정이 켜져 있으면 바로 다운로드
+                if self.config.config.get('AUTO_UPDATE', False) and not self.auto_check_running:
+                    logging.info(f"자동 업데이트 시작 중...")
+                    self.download_and_install_update(download_url)
+            else:
+                self.update_status.emit("최신 버전 사용 중")
+                logging.info(f"최신 버전 사용 중: {self.current_version}")
             
             # 마지막 업데이트 확인 시간 저장
             self.config.config['LAST_UPDATE_CHECK'] = now
             self.config._save_config()
 
         except Exception as e:
+            self.update_status.emit(f"업데이트 확인 실패: {str(e)}")
             logging.error(f"업데이트 확인 실패: {e}")
+        finally:
+            self.is_checking = False
 
     def download_and_install_update(self, download_url):
+        if self.is_downloading:
+            return
+            
+        self.is_downloading = True
+        temp_dir = None
+        
         try:
             # 임시 디렉토리 생성
             temp_dir = tempfile.mkdtemp()
-            temp_file = os.path.join(temp_dir, "update.exe")
+            temp_file = os.path.join(temp_dir, "update.zip")
+            self.update_status.emit("업데이트 다운로드 중...")
 
             # 업데이트 파일 다운로드
             response = requests.get(download_url, stream=True)
@@ -390,26 +420,57 @@ class Updater(QtCore.QObject):
                 for data in response.iter_content(block_size):
                     downloaded += len(data)
                     f.write(data)
-                    progress = int((downloaded / total_size) * 100)
+                    progress = int((downloaded / total_size) * 100) if total_size > 0 else 0
                     self.update_progress.emit(progress)
 
-            # 현재 프로그램 종료 후 업데이트 실행
+            self.update_status.emit("업데이트 설치 준비 중...")
+            
+            # 업데이트 디렉토리 생성
+            update_dir = os.path.join(temp_dir, "update")
+            os.makedirs(update_dir, exist_ok=True)
+            
+            # ZIP 압축 풀기
+            import zipfile
+            with zipfile.ZipFile(temp_file, 'r') as zip_ref:
+                zip_ref.extractall(update_dir)
+            
+            # 현재 프로그램 경로
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            
+            # 업데이트 스크립트 생성
             update_script = os.path.join(temp_dir, "update.bat")
             with open(update_script, 'w') as f:
                 f.write(f'''@echo off
-timeout /t 2 /nobreak
-"{temp_file}"
+echo AI Block 업데이트 설치 중...
+timeout /t 3 /nobreak > nul
+taskkill /f /im ai_block_tray.exe > nul 2>&1
+timeout /t 1 /nobreak > nul
+xcopy /y /e /i "{update_dir}\\*.*" "{current_dir}"
+echo 업데이트가 완료되었습니다!
+start "" "{current_dir}\\ai_block_tray.exe"
 del "%~f0"
 ''')
 
-            subprocess.Popen([update_script], shell=True)
-            self.update_completed.emit(True, "업데이트가 다운로드되었습니다. 프로그램을 재시작합니다.")
-            QtWidgets.qApp.quit()
+            # 관리자 권한으로 스크립트 실행
+            if is_admin():
+                subprocess.Popen([update_script], shell=True)
+                self.update_status.emit("업데이트가 다운로드되었습니다. 프로그램을 재시작합니다.")
+                self.update_completed.emit(True, "업데이트가 다운로드되었습니다. 프로그램을 재시작합니다.")
+                QtWidgets.qApp.quit()
+            else:
+                ctypes.windll.shell32.ShellExecuteW(None, "runas", update_script, None, None, 1)
+                self.update_status.emit("업데이트가 다운로드되었습니다. 관리자 권한으로 설치를 진행합니다.")
+                self.update_completed.emit(True, "업데이트가 다운로드되었습니다. 관리자 권한으로 설치를 진행합니다.")
+                QtWidgets.qApp.quit()
 
         except Exception as e:
+            self.update_status.emit(f"업데이트 설치 실패: {str(e)}")
             logging.error(f"업데이트 설치 실패: {e}")
             self.update_completed.emit(False, f"업데이트 설치 실패: {str(e)}")
-            shutil.rmtree(temp_dir, ignore_errors=True)
+            if temp_dir:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+        finally:
+            self.is_downloading = False
 
     def _compare_versions(self, version1, version2):
         v1_parts = [int(x) for x in version1.split('.')]
@@ -423,6 +484,11 @@ del "%~f0"
             elif v1 < v2:
                 return -1
         return 0
+        
+    def auto_check_updates(self):
+        self.auto_check_running = True
+        self.check_for_updates()
+        self.auto_check_running = False
 
 class UpdateDialog(QtWidgets.QDialog):
     def __init__(self, version, parent=None):
@@ -470,6 +536,7 @@ class TrayApp(QtWidgets.QSystemTrayIcon):
         self.updater.update_available.connect(self.show_update_dialog)
         self.updater.update_progress.connect(self.update_progress)
         self.updater.update_completed.connect(self.update_completed)
+        self.updater.update_status.connect(self.show_update_status)
         
         # 메뉴 생성
         menu = QtWidgets.QMenu(parent)
@@ -499,7 +566,13 @@ class TrayApp(QtWidgets.QSystemTrayIcon):
         status_action.triggered.connect(self.check_block_status)
         
         update_action = menu.addAction("업데이트 확인")
-        update_action.triggered.connect(lambda: self.updater.check_for_updates())
+        update_action.triggered.connect(lambda: self.updater.check_for_updates(force=True))
+        
+        # 자동 업데이트 설정 메뉴
+        self.auto_update_action = menu.addAction("자동 업데이트")
+        self.auto_update_action.setCheckable(True)
+        self.auto_update_action.setChecked(self.config.config.get('AUTO_UPDATE', False))
+        self.auto_update_action.triggered.connect(self.toggle_auto_update)
         
         # 개발자 메뉴 추가
         if self.config.DEVELOPER_MODE:
@@ -534,7 +607,7 @@ class TrayApp(QtWidgets.QSystemTrayIcon):
         
         # 업데이트 확인 타이머 설정
         self.update_timer = QtCore.QTimer()
-        self.update_timer.timeout.connect(self.updater.check_for_updates)
+        self.update_timer.timeout.connect(self.updater.auto_check_updates)
         self.update_timer.start(self.config.UPDATE_CHECK_INTERVAL * 1000)
         
         # 초기 차단 및 업데이트 확인
@@ -542,20 +615,36 @@ class TrayApp(QtWidgets.QSystemTrayIcon):
         QtCore.QTimer.singleShot(1000, self.updater.check_for_updates)
 
     def show_update_dialog(self, version, download_url):
+        if self.config.config.get('AUTO_UPDATE', False):
+            # 자동 업데이트가 켜져 있으면 다이얼로그 표시 안함
+            return
+            
         dialog = UpdateDialog(version, self.parent())
         if dialog.exec_() == QtWidgets.QDialog.Accepted:
             self.updater.download_and_install_update(download_url)
-            self.update_dialog = dialog
 
     def update_progress(self, value):
-        if hasattr(self, 'update_dialog'):
+        if hasattr(self, 'update_dialog') and self.update_dialog is not None:
             self.update_dialog.show_progress(value)
 
     def update_completed(self, success, message):
-        if success:
-            show_message("업데이트", message)
-        else:
-            show_message("업데이트 실패", message, QtWidgets.QMessageBox.Critical)
+        if success and self.config.config.get('AUTO_UPDATE', False):
+            self.showMessage("업데이트 완료", message, QtWidgets.QSystemTrayIcon.Information, self.config.NOTIFICATION_DURATION)
+        elif not success:
+            self.showMessage("업데이트 실패", message, QtWidgets.QSystemTrayIcon.Critical, self.config.NOTIFICATION_DURATION)
+
+    def show_update_status(self, status):
+        if self.config.DEBUG_MODE:
+            self.showMessage("업데이트 상태", status, QtWidgets.QSystemTrayIcon.Information, 2000)
+
+    def toggle_auto_update(self, checked):
+        self.config.config['AUTO_UPDATE'] = checked
+        self.config._save_config()
+        logging.info(f"자동 업데이트 설정: {checked}")
+        self.showMessage("설정 변경", 
+                        f"자동 업데이트가 {'켜졌습니다. 새 버전이 릴리스되면 자동으로 설치됩니다.' if checked else '꺼졌습니다. 수동으로 업데이트를 확인하세요.'}", 
+                        QtWidgets.QSystemTrayIcon.Information, 
+                        self.config.NOTIFICATION_DURATION)
 
     def block_sites(self):
         if block_ai_sites():

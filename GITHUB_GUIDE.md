@@ -45,4 +45,25 @@ GitHub에 커밋하면 GitHub Actions가 자동으로 실행되어 다음과 같
 1. 마스터 브랜치는 항상 실행 가능한 상태여야 합니다.
 2. 큰 변경사항은 별도의 브랜치에서 작업한 후 PR을 통해 병합하는 것이 좋습니다.
 3. 버전 번호는 자동으로 증가하므로 수동으로 변경하지 않아도 됩니다.
-4. 중요한 업데이트의 경우 메이저 버전을 수동으로 증가시키는 것이 좋습니다(예: 1.0.0 → 2.0.0). 
+4. 중요한 업데이트의 경우 메이저 버전을 수동으로 증가시키는 것이 좋습니다(예: 1.0.0 → 2.0.0).
+
+## 빌드 실패 시 대처 방법
+
+GitHub Actions 워크플로우에서 빌드가 실패하는 경우:
+
+1. Actions 탭에서 실패한 워크플로우를 클릭하여 로그 확인
+2. 일반적인 오류 원인:
+   - 아이콘 파일 누락: 저장소에 `tray_icon.png` 파일이 없는 경우 
+   - 설정 파일 누락: `ai_block_config.json` 파일이 없는 경우
+   - Python 패키지 문제: 필요한 패키지가 `requirements.txt`에 명시되지 않은 경우
+
+3. 해결 방법:
+   - 누락된 파일을 저장소에 직접 추가
+   - `.github/workflows/build.yml` 파일에서 오류 부분 수정
+   - `create_icon.py` 스크립트를 실행하여 아이콘 생성
+
+4. 수동 빌드 방법:
+   ```bash
+   python create_icon.py
+   pyinstaller --noconfirm --onedir --windowed --icon=tray_icon.ico --add-data "tray_icon.png;." --add-data "ai_block_config.json;." ai_block_tray.py
+   ``` 

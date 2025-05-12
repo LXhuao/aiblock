@@ -1,0 +1,19 @@
+{
+    "blocked_domains": [
+        "chat.openai.com", "chatgpt.com", "openai.com", "wrtn.ai", "blackbox.ai", "perplexity.ai", 
+        "gemini.google.com", "claude.ai", "x.ai", "chat.mistral.ai", "deepseek.com", "meta.ai", 
+        "pi.ai", "character.ai", "poe.com", "midjourney.com", "stability.ai", "adobe.com", 
+        "runwayml.com", "heygen.com", "synthesia.io", "lumen5.com", "invideo.io", "picsart.com",
+        "craiyon.com", "deepart.io", "kling.kuaishou.com", "elevenlabs.io", "murf.ai", "suno.ai",
+        "aiva.ai", "krisp.ai", "voicemod.net", "notta.ai", "notion.so", "gamma.app", "copy.ai",
+        "jasper.ai", "writesonic.com", "quillbot.com", "grammarly.com", "reclaim.ai", "fathom.video",
+        "rask.ai", "presentations.ai", "clickup.com", "taskade.com", "github.com", "tabnine.com",
+        "codium.ai", "replit.com", "mutable.ai", "askcodi.com", "lightning.ai", "firebase.google.com",
+        "uizard.io", "hubspot.com", "zendesk.com", "intercom.com", "drift.com", "ada.cx", "yext.com",
+        "lately.ai", "buffer.com", "marketmuse.com", "hostinger.com", "10web.io", "elegantthemes.com",
+        "tealhq.com", "kickresume.com", "sanebox.com", "shortwave.com", "getguru.com", "textio.com",
+        "cvviz.com", "spicychat.ai", "toolify.ai", "theresanaiforthat.com",
+        "bard.google.com", "anthropic.com", "cohere.ai", "huggingface.co", "replicate.com",
+        "deepl.com", "assemblyai.com", "scale.com", "forefront.ai", "deepmind.com"
+    ]
+}

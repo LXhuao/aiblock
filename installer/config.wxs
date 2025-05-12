@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Product Id="*" 
+             Name="AI Block" 
+             Language="1033" 
+             Version="1.0.0" 
+             Manufacturer="Zyn" 
+             UpgradeCode="12345678-1234-1234-1234-123456789012">
+        <Package InstallerVersion="200" 
+                 Compressed="yes" 
+                 InstallScope="perMachine" 
+                 Platform="x64"/>
+
+        <MajorUpgrade DowngradeErrorMessage="A newer version is already installed."/>
+        <MediaTemplate EmbedCab="yes"/>
+
+        <Feature Id="ProductFeature" Title="AI Block" Level="1">
+            <ComponentGroupRef Id="ProductComponents"/>
+            <ComponentRef Id="ApplicationShortcut"/>
+            <ComponentRef Id="RegistryEntries"/>
+            <ComponentRef Id="UninstallScript"/>
+        </Feature>
+
+        <!-- 시작 메뉴 디렉토리 -->
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="ProgramFiles64Folder">
+                <Directory Id="INSTALLFOLDER" Name="AI Block"/>
+            </Directory>
+            <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="AI Block"/>
+            </Directory>
+            <Directory Id="StartupFolder" Name="Startup"/>
+        </Directory>
+
+        <!-- 컴포넌트 -->
+        <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+            <Component Id="ProductComponent" Guid="*" Win64="yes">
+                <File Id="AIBlockEXE" 
+                      Name="ai_block_tray.exe" 
+                      Source="!(bindpath.dist)\ai_block_tray.exe" 
+                      KeyPath="yes"/>
+                <File Id="IconFile" 
+                      Name="tray_icon.png" 
+                      Source="!(bindpath.dist)\tray_icon.png"/>
+                
+                <!-- 자동 시작 -->
+                <RegistryValue Root="HKLM" 
+                             Key="Software\Microsoft\Windows\CurrentVersion\Run" 
+                             Name="AI Block" 
+                             Value="[INSTALLFOLDER]ai_block_tray.exe" 
+                             Type="string"/>
+            </Component>
+        </ComponentGroup>
+
+        <!-- 시작 메뉴 바로가기 -->
+        <DirectoryRef Id="ApplicationProgramsFolder">
+            <Component Id="ApplicationShortcut" Guid="*">
+                <Shortcut Id="ApplicationStartMenuShortcut" 
+                         Name="AI Block" 
+                         Description="AI 사이트 차단 프로그램"
+                         Target="[INSTALLFOLDER]ai_block_tray.exe"
+                         WorkingDirectory="INSTALLFOLDER"/>
+                <Shortcut Id="UninstallShortcut"
+                         Name="AI Block 제거"
+                         Description="AI Block 완전 제거"
+                         Target="[INSTALLFOLDER]uninstall.bat"
+                         WorkingDirectory="INSTALLFOLDER"/>
+                <RemoveFolder Id="CleanUpShortCut" 
+                            Directory="ApplicationProgramsFolder" 
+                            On="uninstall"/>
+                <RegistryValue Root="HKCU" 
+                             Key="Software\Zyn\AI Block" 
+                             Name="installed" 
+                             Type="integer" 
+                             Value="1" 
+                             KeyPath="yes"/>
+            </Component>
+        </DirectoryRef>
+
+        <!-- 언인스톨 스크립트 -->
+        <DirectoryRef Id="INSTALLFOLDER">
+            <Component Id="UninstallScript" Guid="*" Win64="yes">
+                <File Id="UninstallBAT" 
+                      Name="uninstall.bat" 
+                      Source="!(bindpath.installer)\uninstall.bat" 
+                      KeyPath="yes"/>
+            </Component>
+        </DirectoryRef>
+
+        <!-- 레지스트리 항목 -->
+        <DirectoryRef Id="TARGETDIR">
+            <Component Id="RegistryEntries" Guid="*" Win64="yes">
+                <RegistryKey Root="HKLM" 
+                            Key="Software\Zyn\AI Block">
+                    <RegistryValue Type="string" 
+                                 Name="InstallPath" 
+                                 Value="[INSTALLFOLDER]" 
+                                 KeyPath="yes"/>
+                    <RegistryValue Type="string" 
+                                 Name="Version" 
+                                 Value="1.0.0"/>
+                </RegistryKey>
+            </Component>
+        </DirectoryRef>
+
+        <!-- UI -->
+        <UI>
+            <UIRef Id="WixUI_InstallDir"/>
+            <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER"/>
+            <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="설치가 완료되었습니다. 프로그램은 시스템 트레이에서 실행됩니다."/>
+        </UI>
+
+        <!-- 라이선스 -->
+        <WixVariable Id="WixUILicenseRtf" Value="!(bindpath.installer)\license.rtf"/>
+    </Product>
+</Wix> 

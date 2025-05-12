@@ -1,0 +1,4 @@
+PyQt5==5.15.9
+requests==2.31.0
+pyinstaller==6.5.0
+cx-Freeze==6.15.12 
